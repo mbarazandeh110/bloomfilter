@@ -7,9 +7,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/devopsfaith/bloomfilter"
-	bf_rpc "github.com/devopsfaith/bloomfilter/rpc"
-	"github.com/devopsfaith/bloomfilter/rpc/server"
+	redisbloom "github.com/RedisBloom/redisbloom-go"
 	"github.com/luraproject/lura/config"
 	"github.com/luraproject/lura/logging"
 )
@@ -22,9 +20,10 @@ var (
 	errWrongConfig = errors.New("invalid config for the bloomfilter")
 )
 
-// Config defines the configuration to be added to the KrakenD gateway
 type Config struct {
-	bf_rpc.Config
+	HashName  string
+	Password  string
+	Address   string
 	TokenKeys []string
 	Headers   []string
 }
@@ -50,20 +49,26 @@ func Register(ctx context.Context, serviceName string, cfg config.ServiceConfig,
 		return nopRejecter, err
 	}
 
-	bf := server.New(ctx, rpcConfig.Config)
-	register(serviceName, rpcConfig.Port)
-
-	return Rejecter{
-		BF:        bf.Bloomfilter(),
+	rejecter := Rejecter{
 		TokenKeys: rpcConfig.TokenKeys,
 		Headers:   rpcConfig.Headers,
-	}, nil
+		HashName:  rpcConfig.HashName,
+	}
+
+	if rpcConfig.Password == "" {
+		rejecter.redis_client = redisbloom.NewClient(rpcConfig.Address, serviceName, nil)
+	} else {
+		rejecter.redis_client = redisbloom.NewClient(rpcConfig.Address, serviceName, &rpcConfig.Password)
+	}
+
+	return rejecter, nil
 }
 
 type Rejecter struct {
-	BF        bloomfilter.Bloomfilter
-	TokenKeys []string
-	Headers   []string
+	HashName     string
+	redis_client *redisbloom.Client
+	TokenKeys    []string
+	Headers      []string
 }
 
 func (r *Rejecter) RejectToken(claims map[string]interface{}) bool {
@@ -76,7 +81,8 @@ func (r *Rejecter) RejectToken(claims map[string]interface{}) bool {
 		if !ok {
 			continue
 		}
-		if r.BF.Check([]byte(k + "-" + data)) {
+		exists, _ := r.redis_client.CfExists(r.HashName, (k + "-" + data))
+		if exists {
 			return true
 		}
 	}
@@ -89,11 +95,12 @@ func (r *Rejecter) RejectHeader(header http.Header) bool {
 		if data == "" {
 			continue
 		}
-		if r.BF.Check([]byte(k + "-" + data)) {
+		exists, _ := r.redis_client.CfExists(r.HashName, (k + "-" + data))
+		if exists {
 			return true
 		}
 	}
 	return false
 }
 
-var nopRejecter = Rejecter{BF: new(bloomfilter.EmptySet)}
+var nopRejecter = Rejecter{HashName: ""}
