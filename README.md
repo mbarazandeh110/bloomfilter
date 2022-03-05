@@ -5,13 +5,12 @@ Uses redisbloom (cuckoo filters) instead of bloomfilter.
 
 
 ## Configuration
-
-Just add the extra config at your backend:
+set the environment variable REDIS_PASSWORD="YOUR_REDIS_PASS"
+and add the extra config at your backend:
 
 ```
 "github_com/devopsfaith/bloomfilter": {
   "HashName": "hash-name",
-  "Password": "passowrd",
   "Address": "ip:port",
   "TokenKeys": ["tokenkey1"]
 },
