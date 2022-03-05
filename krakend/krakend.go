@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"os"
 
 	redisbloom "github.com/RedisBloom/redisbloom-go"
 	"github.com/luraproject/lura/config"
@@ -22,7 +23,6 @@ var (
 
 type Config struct {
 	HashName  string
-	Password  string
 	Address   string
 	TokenKeys []string
 	Headers   []string
@@ -55,10 +55,11 @@ func Register(ctx context.Context, serviceName string, cfg config.ServiceConfig,
 		HashName:  rpcConfig.HashName,
 	}
 
-	if rpcConfig.Password == "" {
+	redis_pass := os.Getenv("REDIS_PASSWORD")
+	if redis_pass == "" {
 		rejecter.redis_client = redisbloom.NewClient(rpcConfig.Address, serviceName, nil)
 	} else {
-		rejecter.redis_client = redisbloom.NewClient(rpcConfig.Address, serviceName, &rpcConfig.Password)
+		rejecter.redis_client = redisbloom.NewClient(rpcConfig.Address, serviceName, &redis_pass)
 	}
 
 	return rejecter, nil
