@@ -22,8 +22,8 @@ var (
 )
 
 type Config struct {
-	HashName  string
-	Address   string
+	HashName string
+	// Address   string
 	TokenKeys []string
 	Headers   []string
 }
@@ -56,10 +56,14 @@ func Register(ctx context.Context, serviceName string, cfg config.ServiceConfig,
 	}
 
 	redis_pass := os.Getenv("REDIS_PASSWORD")
+	redis_ddress := os.Getenv("REDIS_ADDRESS")
+	if redis_ddress == "" {
+		return nopRejecter, &RedisAddressEmpyErr{}
+	}
 	if redis_pass == "" {
-		rejecter.redis_client = redisbloom.NewClient(rpcConfig.Address, serviceName, nil)
+		rejecter.redis_client = redisbloom.NewClient(redis_ddress, serviceName, nil)
 	} else {
-		rejecter.redis_client = redisbloom.NewClient(rpcConfig.Address, serviceName, &redis_pass)
+		rejecter.redis_client = redisbloom.NewClient(redis_ddress, serviceName, &redis_pass)
 	}
 
 	return rejecter, nil
@@ -105,3 +109,10 @@ func (r *Rejecter) RejectHeader(header http.Header) bool {
 }
 
 var nopRejecter = Rejecter{HashName: ""}
+
+type RedisAddressEmpyErr struct {
+}
+
+func (n *RedisAddressEmpyErr) Error() string {
+	return "The 'REDIS_ADDRESS' environment variable dose not exist!"
+}
