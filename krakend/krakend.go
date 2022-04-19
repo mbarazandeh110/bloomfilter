@@ -22,10 +22,10 @@ var (
 )
 
 type Config struct {
-	HashName string
+	Hash_name string
 	// Address   string
-	TokenKeys []string
-	Headers   []string
+	Token_keys []string
+	Headers    []string
 }
 
 // Registers a bloomfilter given a config
@@ -49,15 +49,16 @@ func Register(ctx context.Context, serviceName string, cfg config.ServiceConfig,
 		logger.Error(logPrefix, "Unable to parse the bloomfilter configuration:", err.Error(), string(raw))
 		return nopRejecter, err
 	}
-
-	rejecter := Rejecter{
-		TokenKeys: rpcConfig.TokenKeys,
-		Headers:   rpcConfig.Headers,
-		HashName:  rpcConfig.HashName,
-	}
-
+	hashName := os.Getenv("HASH_NAME")
 	redis_pass := os.Getenv("REDIS_PASSWORD")
 	redis_ddress := os.Getenv("REDIS_ADDRESS")
+
+	rejecter := Rejecter{
+		TokenKeys: rpcConfig.Token_keys,
+		Headers:   rpcConfig.Headers,
+		HashName:  hashName,
+	}
+
 	if redis_ddress == "" {
 		return nopRejecter, &RedisAddressEmpyErr{}
 	}
